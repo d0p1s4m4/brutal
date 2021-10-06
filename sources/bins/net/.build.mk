@@ -1,0 +1,3 @@
+NET_NAME = net
+
+CROSS_BINS += NET
