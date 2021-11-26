@@ -72,7 +72,6 @@ static void rtl8139_init_interrupt(RTL8139Device *dev)
 
     BrBindArgs rtl8139_bind = {
         .event = rtl8139_irq,
-        .flags = BR_BIND_NONE,
     };
 
     br_bind(&rtl8139_bind);

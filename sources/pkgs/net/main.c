@@ -4,7 +4,6 @@
 #include "bal/abi/types.h"
 #include "interface.h"
 #include "pci.h"
-#include "rtl8139.h"
 
 int br_entry_handover(Handover *handover)
 {
