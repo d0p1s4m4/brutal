@@ -13,6 +13,7 @@ errors
 type PciIdentifier =
 {
     U16 vendor,
+    U16 device,
     U8 class,
     U8 subclass,
 };

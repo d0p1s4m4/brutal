@@ -159,7 +159,6 @@ Iter pci_iter(Pci *pci, IterFn fn, void *ctx)
             return ITER_STOP;
         }
     }
-
     return ITER_CONTINUE;
 }
 
@@ -172,7 +171,6 @@ PciConfig *pci_config(Pci *pci, PciAddr addr)
             return pci_group_config(&group, addr);
         }
     }
-
     return nullptr;
 }
 

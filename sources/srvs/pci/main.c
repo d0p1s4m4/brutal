@@ -7,6 +7,17 @@
 #include <protos/system.h>
 #include <brutal-alloc>
 #include <brutal-debug>
+#include "brutal-base/iter.h"
+#include "ipc/capability.h"
+#include "ipc/ipc.h"
+
+typedef struct
+{
+    IpcObject base;
+
+    IpcCap pci_server;
+    Pci *pci;
+} PciServer; /* XXX: Quick fix */
 
 typedef struct
 {
@@ -25,6 +36,22 @@ static Iter pci_bus_query_iter(void *data, PciBusQueryCtx *ctx)
         config->subclass == ctx->identifier.subclass &&
         config->vendor == ctx->identifier.vendor)
     {
+        if (ctx->identifier.device != 0) /* XXX: Quick fix */
+        {
+            if (config->device == ctx->identifier.device)
+            {
+                *ctx->result = (PciAddr){
+                    .bus = addr->bus,
+                    .func = addr->func,
+                    .seg = addr->seg,
+                    .slot = addr->slot,
+                };
+
+                return ITER_STOP;
+            }
+
+            return ITER_CONTINUE;
+        }
         *ctx->result = (PciAddr){
             .bus = addr->bus,
             .func = addr->func,
@@ -40,7 +67,7 @@ static Iter pci_bus_query_iter(void *data, PciBusQueryCtx *ctx)
 
 static PciError pci_bus_query_handler(void *ctx, PciIdentifier const *req, PciAddr *resp, Alloc *)
 {
-    Pci *pci = ctx;
+    Pci *pci = ((PciServer *)ctx)->pci;
     PciBusQueryCtx query = {.result = resp, .identifier = *req, .pci = pci};
 
     if (pci_iter(pci, (IterFn *)pci_bus_query_iter, &query) == ITER_CONTINUE)
@@ -53,7 +80,7 @@ static PciError pci_bus_query_handler(void *ctx, PciIdentifier const *req, PciAd
 
 static PciError pci_bus_bar_handler(void *ctx, PciBusBarRequest const *req, PciBarInfo *resp, Alloc *)
 {
-    Pci *pci = ctx;
+    Pci *pci = ((PciServer *)ctx)->pci;
     PciConfig *config = pci_config(pci, req->addr);
 
     if (config == nullptr)
@@ -69,7 +96,7 @@ static PciError pci_bus_bar_handler(void *ctx, PciBusBarRequest const *req, PciB
 
 static PciError pci_bus_enable_irq_handler(void *ctx, PciBusEnableIrqRequest const *req, uint8_t *resp, MAYBE_UNUSED Alloc *alloc)
 {
-    Pci *pci = ctx;
+    Pci *pci = ((PciServer *)ctx)->pci;
     PciConfig *config = pci_config(pci, req->addr);
 
     if (config == nullptr)
@@ -99,7 +126,8 @@ static PciError pci_bus_enable_irq_handler(void *ctx, PciBusEnableIrqRequest con
 
         if (!found)
         {
-            return PCI_NO_IRQ_FOR_DEVICE;
+            *resp = v->interrupt_line; /* XXX */
+            return IPC_SUCCESS; /*PCI_NO_IRQ_FOR_DEVICE;*/
         }
 
         pci_bind_msi(0, 30, cap);
@@ -145,7 +173,7 @@ static Iter iter_pci(void *data, void *ctx)
             uint8_t value = cap->cap_id;
             cap_offset = cap->next;
             cap = (PciCapability *)((uint8_t *)config + cap_offset);
-            log$("     - {}", cap2str(value));
+            log$("     - {} {}", cap2str(value), value);
         }
     }
 
@@ -166,15 +194,16 @@ int ipc_component_main(IpcComponent *self)
     Acpi acpi;
     acpi_init(&acpi, rsdp);
 
+    PciServer obj = {};
     Pci pci;
     pci_init(&pci, &acpi, alloc_global());
     pci_iter(&pci, iter_pci, &pci);
 
-    IpcObject obj = {};
-    ipc_object_init(&obj, ipc_self(), alloc_global());
+    obj.pci = &pci;
+    ipc_object_init(base$(&obj), ipc_self(), alloc_global());
 
-    IpcCap cap = pci_bus_provide(&obj, &pci_bus_vtable);
-    system_server_expose_rpc(self, system_server, &cap, alloc_global());
+    obj.pci_server = pci_bus_provide(base$(&obj), &pci_bus_vtable);
+    system_server_expose_rpc(self, system_server, &obj.pci_server, alloc_global());
 
     return ipc_component_run(self);
 }

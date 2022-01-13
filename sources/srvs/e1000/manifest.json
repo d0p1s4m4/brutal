@@ -1,0 +1,5 @@
+{
+    "name": "e1000",
+    "consume": ["system.Server", "pci.Bus"],
+    "rights": ["irq", "dma", "pio", "log"]
+}

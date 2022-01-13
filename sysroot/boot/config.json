@@ -39,6 +39,14 @@
                 {
                     "name": "panel",
                     "path": "/pkgs/panel"
+                },
+                {
+                    "name": "rtl8139",
+                    "path": "/pkgs/rtl8139"
+                },
+                {
+                    "name": "e1000",
+                    "path": "/pkgs/e1000"
                 }
             ]
         }

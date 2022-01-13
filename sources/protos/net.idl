@@ -1,0 +1,8 @@
+module net;
+
+import base, math, event;
+
+interface Server
+{
+    method register -> IpcCap;
+};
